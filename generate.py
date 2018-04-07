@@ -1,12 +1,13 @@
 import sys
 import pickle
 import random
-import time
+import argparse
 sys.setrecursionlimit(50000)
 
 
 def progress(progress, total):
     print('\r[{0}] {1}%'.format('#'*(round(progress/total*50))+ '-'*(50-round(progress/total*50)), ((progress/total + 0.001)//0.001)/10), end = '')
+
 
 def load_obj(name):
     global N
@@ -48,6 +49,7 @@ def rand_line(length, inword, time):
                 tempdict.append(key)
         word = random.choice(tempdict)
         a = rand_line(length - 1, word, 0)
+        #print(a, length)
         if a == "False":
             if time <= 10:
                 return rand_line(length, inword, time+1)
@@ -63,42 +65,30 @@ def rand_line(length, inword, time):
         return rand_line(length, inword, time+1)
 
 
+def parse():
+    parser = argparse.ArgumentParser(description='Гененратор моделей из текстов 1.2')
+    parser.add_argument('--model', action='store', required=True, help='Путь к файлу модели')
+    parser.add_argument('--length', action='store', default=50, type=int, help='Длина сроки (по умолчанию - 50).')
+    parser.add_argument('--output', action='store', default=None, help='Файл вывода строки (опционально.')
+    parser.add_argument('--seed', action='store', default=None, help='Певрое слово строки (опционально).')
+    args = parser.parse_args()
+    return args
+
+
+args = parse()
 result = []
 a = sys.argv
 main_dict = {}
 N = 1
-LENGTH = 50
-first = '$none$'
-for i in range(len(a)):
-    if a[i] == '--model':
-        i += 1
-        something = a[i]
-    elif a[i] == '--length':
-        i += 1
-        LENGTH = int(a[i])
-    elif a[i] == '--output':
-        i += 1
-        sys.stdout = open(a[i], "w")
-    elif a[i] == '--seed':
-        i += 1
-        first = a[i]
-    elif a[i] == '--help':
-        print("Аргументы для генератора строк:")
-        print("    --model - путь к файлу модели")
-        print("    --length - длина строки. ПО УМОЛЧАНИЮ - 50")
-        print("    --output - путь к выводному файлу")
-        print("    --seed - начальное слово. ПО УМОЛЧАНИЮ - случайное.")
-        print("    --help - справка")
-        sys.exit()
-
-main_dict = load_obj(something)
-#print(main_dict)
+LENGTH = args.length
+first = args.seed
+main_dict = load_obj(args.model)
 final_line = "False"
 i = 0
 print("Генерация строки:")
 mother = []
 
-if first != '$none$':
+if first != None:
     flag = False
     for j in main_dict.keys():
         for l in main_dict[j]:
@@ -110,19 +100,15 @@ if first != '$none$':
         print('Не удалось найти слово в тексте, выберите другое начальное слово!')
         sys.exit()
 used_keys = []
-while final_line == "False":
+while final_line == "False" and not len(used_keys) == len(main_dict.keys()):
     i += 1
-    if first == '$none$':
+    if first == None:
         flag = True
         key = ''
-        while not len(used_keys) == len(main_dict.keys()) or flag:
-            while key in used_keys and not len(used_keys) == len(main_dict.keys()) or flag:
-                key = random.choice(list(main_dict.keys()))
-                flag = False
-            used_keys.append(key)
-            final_line = rand_line(LENGTH, key, 0)
-        else:
-            break
+        while key in used_keys:
+            key = random.choice(list(main_dict.keys()))
+        used_keys.append(key)
+        final_line = rand_line(LENGTH-1, key, 0)
     else:
         for l in mother:
             final_line = rand_line(LENGTH - 1, l, 0)
@@ -131,6 +117,6 @@ while final_line == "False":
     if i > 100:
         print('Не удалось выполнить генерацию строки, измените начальное слово или длину')
         sys.exit()
-if first != '$none$':
+if first != None:
     final_line = first + " " + final_line
 print('\n\n', final_line)
