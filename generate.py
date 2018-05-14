@@ -6,7 +6,7 @@ sys.setrecursionlimit(50000)
 
 
 def progress(progress, total):
-    print('\r[{0}] {1}%'.format('#'*(round(progress/total*50))+ '-'*(50-round(progress/total*50)), ((progress/total + 0.001)//0.001)/10), end = '')
+    print('\r[{0}] {1}%'.format('#'*(round(progress/total*50)) + '-'*(50-round(progress/total*50)), ((progress/total + 0.001)//0.001)/10), end = '')
 
 
 def load_obj(name):

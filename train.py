@@ -2,7 +2,7 @@ import sys
 import os
 import pickle
 import argparse
-
+import re
 
 def progress(count, total, suffix=''):
     bar_len = 60
@@ -73,23 +73,16 @@ def save_obj(main_dict, N, MIN, path):
             try:
                 os.mkdir(os.getcwd() + '\\obj\\')
             except:
-                print('Не найден путь', name, '. Проверьте правильность имени папки и повторите попытку. ')
+                print('Не найден путь', path, '. Проверьте правильность имени папки и повторите попытку. ')
                 sys.exit()
 
 
 def wordgood(input_word):
     word = input_word.lower()
-    result = ""
-    for i in word:
-        if (ord(i) >= ord('a') and ord(i) <= ord('z')) \
-                or (ord(i) >= ord('а') and ord(i) <= ord('я')) \
-                or (ord(i) >= ord('A') and ord(i) <= ord('Z')) \
-                or (ord(i) >= ord('А') and ord(i) <= ord('Я'))\
-                or (i == '-' and len(word) > 1 and word[0] != '-'):
-            result += i
+    result = re.findall('[a-zA-Zа-яА-Я]+', word)
     if len(result) == 0:
-        result = '#@'
-    return result
+        result = ['$$$']
+    return result[0]
 
 
 def parse():
@@ -128,7 +121,7 @@ if args.input_dir == None:
         for word in range(len(line) - N):
             flag = False
             for i in range(word, word + N + 1):
-                if wordgood(line[i]) == '#@':
+                if wordgood(line[i]) == '$$$':
                     flag = True
                     break
             if flag:
@@ -146,16 +139,17 @@ if args.input_dir == None:
 else:
     for file in os.listdir(args.input_dir):
         print('Чтение файла текста', file, '... ', end='')
-        sys.stdin = open(args.input_dir + '\\' + file, 'r')
-        while True:
+        f = open(args.input_dir + '\\' + file, 'r')
+        line = '7'
+        while line != []:
             try:
-                line = input().strip().split()
+                line = f.readline().strip().split()
             except:
-                break
+                continue
             for word in range(len(line) - N):
                 flag = False
                 for i in range(word, word + N + 1):
-                    if wordgood(line[i]) == '#@':
+                    if wordgood(line[i]) == '$$$':
                         flag = True
                         break
                 if flag:
@@ -170,6 +164,7 @@ else:
                 else:
                     main_dict[key] = {next_key: 1}
                 first_word = next_key
+        f.close()
         print('ГОТОВО!')
 
 if args.min > 1:
