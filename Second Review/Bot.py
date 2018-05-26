@@ -3,6 +3,7 @@ import config
 import lib
 import interp
 from telebot import apihelper
+import datetime
 
 apihelper.proxy = {'https': 'https://'+lib.get_git_proxy()}
 bot = telebot.TeleBot(config.token)
@@ -31,8 +32,9 @@ def create(chatid):
     if not lib.is_user_started(chatid):
         bot.send_message(chatid, 'Для начала работы нажмите /start')
         return
-    last_actions[chatid] = 'start_create'
+    last_actions[chatid] = ['start_create']
     bot.send_message(chatid, 'Выберите день расписание для которго вы хотите заполнить?')
+
 
 @bot.message_handler(commands=['create'])
 def creation(message):
@@ -63,7 +65,8 @@ def stop_create(message):
 
 
 def getting_of_timetable(chatid, day):
-    a = 'Вот ваше расписание на ' + lib.days_rus[day] + ': \n'
+    a = lib.updates_for_date(day, chatid)
+    a += 'Вот ваше расписание на ' + lib.days_rus[day] + ': \n'
     try:
         timetable = lib.get_timetable(day, chatid)
     except NameError:
@@ -98,22 +101,26 @@ def get_timetable(message):
 @bot.message_handler()
 def usual_message(message):
     try:
-        if last_actions[message.chat.id] == 'start_create':
+        if last_actions[message.chat.id][0] == 'start_create':
             try:
                 day = interp.day_parse(message.text)
                 if day[1] < 0.8:
                     bot.send_message(message.chat.id, 'Мы не совсем уверены и решили, что это - ' + lib.days_rus[day[0]] + '. Если что, всегда можно начать заново /create')
                 day = day[0]
-                print('here')
                 last_actions[message.chat.id] = ['creating', 0, [], day]
                 bot.send_message(message.chat.id, 'Отправляйте ваши занятия по очереди (каждое в новом сообщении, не больше 8) после последнего отправьте /end')
             except:
-                bot.send_message(message.chat.id, 'Сложный какой-то день я такое не парсю, повтори плиз')
+                bot.send_message(message.chat.id, 'Сложный какой-то день я такое не парсю, повторите плиз')
+        elif last_actions[message.chat.id][0] == 'upgrading':
+            print('here')
+            date = lib.set_update(last_actions[message.chat.id][1], message.text, message.chat.id)
+            bot.send_message(message.chat.id, 'Замена на ' + date.strftime('%d.%m.%y') + ' добавлена')
+            last_actions[message.chat.id] = None
         elif last_actions[message.chat.id][0] == 'creating':
             last_actions[message.chat.id][1] += 1
             last_actions[message.chat.id][2].append(message.text)
             if last_actions[message.chat.id][1] == 8:
-                bot.send_message(message.chat.id, 'Вы можете добавить дополнительные занятия или законичить /stop_create')
+                bot.send_message(message.chat.id, 'Вы можете добавить дополнительные занятия или закончить /stop_create')
             elif last_actions[message.chat.id][1] == 9:
                 lib.insertion_timetable(last_actions[message.chat.id][3], last_actions[message.chat.id][2], message.chat.id)
                 bot.send_message(message.chat.id, 'Расписание на ' + lib.days_rus[last_actions[message.chat.id][3]] + ' заполнено')
@@ -129,12 +136,17 @@ def usual_message(message):
                     print('here')
                     last_actions[message.chat.id] = ['creating', 0, [], day]
                     bot.send_message(message.chat.id,
-                                     'Отправляйте ваши занятия по очереди (каждое в новом сообщении, не больше 8) после последнего отправьте /end')
+                                     'Отправляйте ваши занятия по очереди (каждое в новом сообщении, но не больше 8) после последнего отправьте /end')
             elif command == 'get':
                 getting_of_timetable(message.chat.id, day)
             elif command == 'cancel':
                 last_actions[message.chat.id] = None
                 bot.send_message(message.chat.id, "Забыли...")
+            elif command == 'update':
+                last_actions[message.chat.id] = []
+                last_actions[message.chat.id].append('upgrading')
+                last_actions[message.chat.id].append(day)
+                bot.send_message(message.chat.id, "У вас замена, а что будет?")
         except:
             bot.send_message(message.chat.id, 'Либо что-то пошло не так, либо я слишком глупый, попробуйте еще раз..')
 
@@ -142,9 +154,8 @@ def usual_message(message):
 def polling_function():
     try:
         print('Bot running...')
-        bot.polling(none_stop=True)
-    except Exception as e:
-        print(e)
+        bot.polling(timeout=10)
+    except:
         apihelper.proxy = {'https': 'https://' + lib.get_git_proxy()}
         print('Proxy changed')
         polling_function()
